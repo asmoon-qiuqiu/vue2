@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+
 // 首页
 import Layout from '@/views/layout'
 // 二级路由
@@ -14,9 +15,20 @@ const Pay = () => import('@/views/pay')
 const Prodetail = () => import('@/views/prodetail')
 const Search = () => import('@/views/search')
 const SearchList = () => import('@/views/search/list.vue')
-const store = () => import('@/store')
 
 Vue.use(VueRouter)
+
+// 用于存储动态加载的 store
+let store
+
+// 封装一个函数来获取 store
+async function getStore () {
+  if (!store) {
+    const storeModule = await import('@/store')
+    store = storeModule.default // 获取默认导出的 store
+  }
+  return store
+}
 
 const router = new VueRouter({
   routes: [
@@ -34,7 +46,6 @@ const router = new VueRouter({
     { path: '/login', component: Login },
     { path: '/myorder', component: Myorder },
     { path: '/pay', component: Pay },
-    // 动态路由传参，确定将来时那个商品
     { path: '/prodetail/:id', component: Prodetail },
     { path: '/search', component: Search },
     { path: '/searchlist', component: SearchList }
@@ -42,16 +53,19 @@ const router = new VueRouter({
 })
 
 // 全局前置导航守卫
-router.beforeEach((to, from, next) => {
-  const aultPath = ['/pay', '/myorder']
+router.beforeEach(async (to, from, next) => {
+  const authPath = ['/pay', '/myorder']
 
   // 判断是否是授权页面
-  if (!aultPath.includes(to.path)) {
-    // 非权限页面放行
+  if (!authPath.includes(to.path)) {
     next()
     return
   }
-  const token = store.getters.token
+
+  // 动态加载 store
+  const store = await getStore()
+  const token = store.getters.token // 获取 token
+
   if (token) {
     next()
   } else {
